@@ -85,46 +85,131 @@
       margin-bottom: 1.25rem;
       text-align: center;
     }
+    #dashboard[hidden], #login-view[hidden] { display: none; }
+    #links { display: grid; gap: 0.75rem; margin: 1.5rem 0; }
+    .link-card { display: block; border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-main); padding: 1rem; text-decoration: none; }
+    .link-card:hover, .link-card:focus-visible { border-color: var(--accent-color); }
+    .link-card strong, .link-card span { display: block; }
+    .link-card span { color: var(--text-muted); font-size: 0.875rem; margin-top: 0.25rem; }
   </style>
 </head>
 <body>
 
-  <div class="login-container">
+  <div class="login-container" id="login-view">
     <div class="login-header">
-      <h1>Login</h1>
-      <p>Please enter your credentials to continue</p>
+      <h1>Game Access</h1>
+      <p>Sign in with your Google account</p>
     </div>
 
     <div id="error-box" class="error-box" style="display: none;"></div>
 
     <form id="login-form">
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" required autocomplete="username" />
-      </div>
-
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required autocomplete="current-password" />
-      </div>
-
-      <button type="submit" id="submit-btn" class="btn-submit">Sign In</button>
+      <button type="submit" id="submit-btn" class="btn-submit">Continue with Google</button>
     </form>
   </div>
 
-  <script>
+  <div class="login-container" id="dashboard" hidden>
+    <div class="login-header">
+      <h1>Game Access</h1>
+      <p id="dashboard-status" aria-live="polite">Loading your destinations…</p>
+    </div>
+    <div id="links"></div>
+    <button type="button" id="sign-out" class="btn-submit">Sign Out</button>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { SUPABASE_OAUTH_REDIRECT_URL, SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from './supabase-config.js';
+
     const form = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
     const errorBox = document.getElementById('error-box');
+    const loginView = document.getElementById('login-view');
+    const dashboard = document.getElementById('dashboard');
+    const status = document.getElementById('dashboard-status');
+    const links = document.getElementById('links');
+    const signOutButton = document.getElementById('sign-out');
 
-    const _0x82b4=["\x68\x74\x74\x70\x73\x3a\x2f\x2f\x6d\x79\x2d\x61\x75\x74\x68\x2d\x77\x6f\x72\x6b\x65\x72\x2e\x67\x6f\x6f\x67\x6c\x65\x75\x73\x65\x72\x32\x35\x2e\x77\x6f\x72\x6b\x65\x72\x73\x2e\x64\x65\x76\x2f\x6c\x6f\x67\x69\x6e"];
-    form.action = _0x82b4[0];
-    form.method = 'post';
-
-    form.addEventListener('submit', () => {
+    if (SUPABASE_URL.includes('YOUR_PROJECT') || SUPABASE_PUBLISHABLE_KEY.includes('YOUR_') || SUPABASE_OAUTH_REDIRECT_URL.includes('YOUR_')) {
+      errorBox.textContent = 'This site has not been configured for sign-in yet.';
+      errorBox.style.display = 'block';
       submitBtn.disabled = true;
-      submitBtn.innerText = "Verifying...";
+      throw new Error('Supabase configuration is missing.');
+    }
+
+    // OAuth returns to a stable CDN URL. Use the implicit flow so it does not
+    // require persistent storage for a PKCE verifier in an about:blank launch.
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: true, flowType: 'implicit' }
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Redirecting to Google...';
       errorBox.style.display = 'none';
+
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: SUPABASE_OAUTH_REDIRECT_URL }
+        });
+        if (error) throw error;
+      } catch (error) {
+        console.error('[game-access]', error);
+        errorBox.textContent = 'Unable to start Google sign-in. Please try again.';
+        errorBox.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Sign In';
+      }
+    });
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) await showDashboard();
+
+    async function showDashboard() {
+      loginView.hidden = true;
+      dashboard.hidden = false;
+      links.replaceChildren();
+      status.textContent = 'Loading your destinations…';
+      const { data, error } = await supabase
+        .from('user_links')
+        .select('label, href, description, position')
+        .order('position', { ascending: true })
+        .order('id', { ascending: true });
+
+      if (error) {
+        status.textContent = 'Unable to load your destinations.';
+        console.error('[game-access]', error);
+        return;
+      }
+      for (const link of data) {
+        let href;
+        try { href = new URL(link.href); } catch { continue; }
+        if (href.protocol !== 'https:') continue;
+        const card = document.createElement('a');
+        card.className = 'link-card';
+        card.href = href.href;
+        card.rel = 'noopener noreferrer';
+        const label = document.createElement('strong');
+        label.textContent = link.label;
+        card.append(label);
+        if (link.description) {
+          const description = document.createElement('span');
+          description.textContent = link.description;
+          card.append(description);
+        }
+        links.append(card);
+      }
+      status.textContent = links.childElementCount ? 'Choose a destination.' : 'No destinations are assigned to this account.';
+    }
+
+    signOutButton.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      dashboard.hidden = true;
+      loginView.hidden = false;
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Sign In';
     });
   </script>
 </body>
