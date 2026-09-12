@@ -137,10 +137,11 @@
       throw new Error('Supabase configuration is missing.');
     }
 
-    // OAuth returns to a stable CDN URL. Use the implicit flow so it does not
-    // require persistent storage for a PKCE verifier in an about:blank launch.
+    // GitHub Pages provides a stable HTTPS origin, so use Supabase's PKCE
+    // flow and persist the session in this browser. This page must be opened
+    // directly at the configured GitHub Pages URL, not via jsDelivr.
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: true, flowType: 'implicit' }
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
     });
 
     form.addEventListener('submit', async (event) => {
@@ -164,8 +165,28 @@
       }
     });
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) await showDashboard();
+    let displayedUserId = null;
+
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        void renderSession(session);
+      }
+    });
+
+    async function renderSession(session) {
+      if (!session) {
+        displayedUserId = null;
+        dashboard.hidden = true;
+        loginView.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Continue with Google';
+        return;
+      }
+
+      if (displayedUserId === session.user.id) return;
+      displayedUserId = session.user.id;
+      await showDashboard();
+    }
 
     async function showDashboard() {
       loginView.hidden = true;
@@ -205,11 +226,11 @@
     }
 
     signOutButton.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      dashboard.hidden = true;
-      loginView.hidden = false;
-      submitBtn.disabled = false;
-      submitBtn.innerText = 'Sign In';
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('[game-access]', error);
+        status.textContent = 'Unable to sign out. Please try again.';
+      }
     });
   </script>
 </body>
