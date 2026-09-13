@@ -208,18 +208,26 @@
         const card = document.createElement('a');
         card.className = 'link-card';
         card.href = '#';
-        card.addEventListener('click', (e) => {
+        card.addEventListener('click', async (e) => {
           e.preventDefault();
+
+          // Open new window immediately to avoid popup blockers
           const win = window.open('about:blank');
-          if (win) {
-            win.document.body.style.margin = '0';
-            win.document.body.style.height = '100vh';
-            const iframe = win.document.createElement('iframe');
-            iframe.style.border = 'none';
-            iframe.style.width = '100%';
-            iframe.style.height = '100%';
-            iframe.src = href.href;
-            win.document.body.appendChild(iframe);
+          if (!win) return;
+
+          win.document.write('Loading...');
+
+          try {
+            const response = await fetch(href.href);
+            const htmlText = await response.text();
+
+            // Write the fetched HTML to the new document
+            win.document.open();
+            win.document.write(htmlText);
+            win.document.close();
+          } catch (err) {
+            console.error('[game-access] Failed to fetch content:', err);
+            win.document.body.innerHTML = '<p style="color:red; font-family:sans-serif;">Failed to load destination content.</p>';
           }
         });
         const label = document.createElement('strong');
