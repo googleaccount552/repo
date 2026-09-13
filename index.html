@@ -137,9 +137,6 @@
       throw new Error('Supabase configuration is missing.');
     }
 
-    // GitHub Pages provides a stable HTTPS origin, so use Supabase's PKCE
-    // flow and persist the session in this browser. This page must be opened
-    // directly at the configured GitHub Pages URL, not via jsDelivr.
     const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
       auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'pkce' }
     });
@@ -210,9 +207,21 @@
         if (href.protocol !== 'https:') continue;
         const card = document.createElement('a');
         card.className = 'link-card';
-        card.href = href.href;
-        card.target = '_blank';
-        card.rel = 'noopener noreferrer';
+        card.href = '#';
+        card.addEventListener('click', (e) => {
+          e.preventDefault();
+          const win = window.open('about:blank');
+          if (win) {
+            win.document.body.style.margin = '0';
+            win.document.body.style.height = '100vh';
+            const iframe = win.document.createElement('iframe');
+            iframe.style.border = 'none';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.src = href.href;
+            win.document.body.appendChild(iframe);
+          }
+        });
         const label = document.createElement('strong');
         label.textContent = link.label;
         card.append(label);
