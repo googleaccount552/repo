@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0" />
-<title>Game Access</title>
+<title>Google</title>
 <meta property="og:locale" content="en-US" />
-<meta property="og:type" content="website" />
-<meta property="og:title" content="Game Access" />
+<link href="//www.gstatic.com/images/branding/searchlogo/ico/favicon.ico" rel="icon">
   <style>
     :root {
       --bg-color: #0f172a;
@@ -115,10 +114,11 @@
 
   <div class="login-container" id="dashboard" hidden>
     <div class="login-header">
-      <h1>Game Access</h1>
+      <h1>Links</h1>
       <p id="dashboard-status" aria-live="polite">Loading your destinations…</p>
     </div>
     <div id="links"></div>
+    <button type="button" id="orange" class="btn-submit">Mask Page (please do this!)</button>
     <button type="button" id="sign-out" class="btn-submit">Sign Out</button>
   </div>
 
@@ -133,6 +133,7 @@
     const dashboard = document.getElementById('dashboard');
     const status = document.getElementById('dashboard-status');
     const links = document.getElementById('links');
+    const orange = document.getElementById('orange');
     const signOutButton = document.getElementById('sign-out');
 
     if (SUPABASE_URL.includes('YOUR_PROJECT') || SUPABASE_PUBLISHABLE_KEY.includes('YOUR_') || SUPABASE_OAUTH_REDIRECT_URL.includes('YOUR_')) {
@@ -159,7 +160,7 @@
         });
         if (error) throw error;
       } catch (error) {
-        console.error('[game-access]', error);
+        console.error('[google-signin]', error);
         errorBox.textContent = 'Unable to start Google sign-in. Please try again.';
         errorBox.style.display = 'block';
         submitBtn.disabled = false;
@@ -187,37 +188,6 @@
 
       if (displayedUserId === session.user.id) return;
       displayedUserId = session.user.id;
-
-      // Trigger auto-masking only AFTER successful authentication if not already inside iframe
-      if (window.self === window.top && !window.location.href.includes('is_masked=true')) {
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('is_masked', 'true');
-        const maskedUrl = window.location.pathname + '?' + urlParams.toString() + window.location.hash;
-
-        const win = window.open('about:blank', '_blank');
-        if (win) {
-          win.document.open();
-          win.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>Google</title>
-              <style>
-                html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-                iframe { border: none; width: 100%; height: 100%; }
-              </style>
-            </head>
-            <body>
-              <iframe src="${maskedUrl}"></iframe>
-            </body>
-            </html>
-          `);
-          win.document.close();
-          window.location.replace('https://www.google.com');
-          return;
-        }
-      }
-
       await showDashboard();
     }
 
@@ -234,7 +204,7 @@
 
       if (error) {
         status.textContent = 'Unable to load your destinations.';
-        console.error('[game-access]', error);
+        console.error('[google-signin]', error);
         return;
       }
       for (const link of data) {
@@ -260,7 +230,7 @@
             win.document.write(htmlText);
             win.document.close();
           } catch (err) {
-            console.error('[game-access] Failed to fetch content:', err);
+            console.error('[google-signin] Failed to fetch content:', err);
             win.document.body.innerHTML = '<p style="color:red; font-family:sans-serif;">Failed to load destination content.</p>';
           }
         });
@@ -277,10 +247,35 @@
       status.textContent = links.childElementCount ? 'Choose a destination.' : 'No destinations are assigned to this account.';
     }
 
+    orange.addEventListener('click', () => {
+      const win = window.open('about:blank', '_blank');
+      if (!win) return;
+
+      win.document.open();
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Google</title>
+          <link href="//www.gstatic.com/images/branding/searchlogo/ico/favicon.ico" rel="icon">
+          <style>
+            html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+            iframe { border: none; width: 100%; height: 100%; }
+          </style>
+        </head>
+        <body>
+          <iframe src="${window.location.href}"></iframe>
+        </body>
+        </html>
+      `);
+      win.document.close();
+      window.location.replace('https://www.google.com');
+    });
+
     signOutButton.addEventListener('click', async () => {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('[game-access]', error);
+        console.error('[google-signin]', error);
         status.textContent = 'Unable to sign out. Please try again.';
       }
     });
