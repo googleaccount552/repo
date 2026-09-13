@@ -6,7 +6,7 @@
 <title>Google</title>
 <link href="//www.gstatic.com/images/branding/searchlogo/ico/favicon.ico" rel="icon">
 <meta property="og:locale" content="en-US" />
-  <style>
+<style>
     :root {
       --bg-color: #0f172a;
       --card-bg: #1e293b;
@@ -68,6 +68,11 @@
       font-weight: 600;
       cursor: pointer;
       transition: background-color 0.2s ease, opacity 0.2s ease;
+      margin-bottom: 0.75rem;
+    }
+
+    .btn-submit:last-child {
+      margin-bottom: 0;
     }
 
     .btn-submit:disabled, .form-group input:disabled {
@@ -113,6 +118,7 @@
       <p id="dashboard-status" aria-live="polite">Loading your destinations…</p>
     </div>
     <div id="links"></div>
+    <button type="button" id="orange" class="btn-submit">Mask Page (please do this)</button>
     <button type="button" id="sign-out" class="btn-submit">Sign Out</button>
   </div>
 
@@ -127,6 +133,7 @@
     const dashboard = document.getElementById('dashboard');
     const status = document.getElementById('dashboard-status');
     const links = document.getElementById('links');
+    const orange = document.getElementById('orange');
     const signOutButton = document.getElementById('sign-out');
 
     if (SUPABASE_URL.includes('YOUR_PROJECT') || SUPABASE_PUBLISHABLE_KEY.includes('YOUR_') || SUPABASE_OAUTH_REDIRECT_URL.includes('YOUR_')) {
@@ -239,6 +246,31 @@
       }
       status.textContent = links.childElementCount ? 'Choose a destination.' : 'No destinations are assigned to this account.';
     }
+
+    orange.addEventListener('click', () => {
+      const win = window.open('about:blank', '_blank');
+      if (!win) return;
+
+      win.document.open();
+      win.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Google</title>
+          <link href="//www.gstatic.com/images/branding/searchlogo/ico/favicon.ico" rel="icon">
+          <style>
+            html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
+            iframe { border: none; width: 100%; height: 100%; }
+          </style>
+        </head>
+        <body>
+          <iframe src="${window.location.href}"></iframe>
+        </body>
+        </html>
+      `);
+      win.document.close();
+      window.location.replace('https://www.google.com');
+    });
 
     signOutButton.addEventListener('click', async () => {
       const { error } = await supabase.auth.signOut();
